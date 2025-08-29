@@ -2,8 +2,11 @@
 const pool = require("../db/connect");
 
 // ✅ Create Product
+// ✅ Use req.user.id from JWT middleware
 const createProduct = async (req, res) => {
-  const { name, description, sku, price, created_by } = req.body;
+  const { name, description, sku, price } = req.body;
+  const created_by = req.user.id; // safe!
+
   try {
     const [result] = await pool.query(
       "CALL SP_DEALS_PRODUCTCREATION(?, ?, ?, ?, ?)",
@@ -18,11 +21,12 @@ const createProduct = async (req, res) => {
 // ✅ Update Product
 const updateProduct = async (req, res) => {
   const { id } = req.params;
-  const { name, description, sku, price } = req.body;
+  const { name, description, sku, price, updated_by } = req.body; // must include updated_by
+
   try {
     const [result] = await pool.query(
-      "CALL SP_DEALS_PRODUCTUPDATE(?, ?, ?, ?, ?)",
-      [id, name, description, sku, price]
+      "CALL SP_DEALS_PRODUCTUPDATE(?, ?, ?, ?, ?, ?)",
+      [id, name, description, sku, price, updated_by]
     );
     res.json({ success: true, message: "Product updated", data: result });
   } catch (error) {
@@ -41,7 +45,7 @@ const deleteProduct = async (req, res) => {
   }
 };
 
-// ✅ Get All Products
+//  Get All Products
 const getProducts = async (req, res) => {
   try {
     const [rows] = await pool.query("CALL SP_DEALS_PRODUCTVIEW()");
@@ -51,4 +55,22 @@ const getProducts = async (req, res) => {
   }
 };
 
-module.exports = { createProduct, updateProduct, deleteProduct, getProducts };
+// Get Product by ID
+const getProductById = async (req, res) => {
+  const { id } = req.params;
+  try {
+    const [rows] = await pool.query("CALL SP_DEALS_PRODUCTVIEWBYID(?)", [id]);
+    res.json({ success: true, data: rows[0] });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+};
+
+module.exports = { 
+  createProduct, 
+  updateProduct, 
+  deleteProduct, 
+  getProducts, 
+  getProductById 
+};
+

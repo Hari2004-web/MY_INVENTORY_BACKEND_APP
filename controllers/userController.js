@@ -1,8 +1,5 @@
 const pool = require("../db/connect");
 
-// ---------------------------
-// User Controllers
-// ---------------------------
 
 // Create User
 const createUser = async (req, res) => {
@@ -43,15 +40,36 @@ const deleteUser = async (req, res) => {
     res.status(500).json({ success: false, error: error.message });
   }
 };
+// In userController.js
 
-// View Users
-const getUsers = async (req, res) => {
+// View All Users
+const getAllUsers = async (req, res) => {
   try {
     const [rows] = await pool.query("CALL SP_DEALS_USERVIEW()");
-    res.json({ success: true, data: rows[0] }); // rows[0] contains actual data
+    res.json({ success: true, data: rows[0] });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }
 };
 
-module.exports = { createUser, updateUser, deleteUser, getUsers };
+// View Single User by ID
+const getUserById = async (req, res) => {
+  const { id } = req.params;
+  try {
+    const [rows] = await pool.query("SELECT * FROM users WHERE id = ?", [id]);
+    if (rows.length === 0) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
+    res.json({ success: true, data: rows[0] });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+};
+
+module.exports = {
+  createUser,
+  updateUser,
+  deleteUser,
+  getAllUsers,
+  getUserById,
+};

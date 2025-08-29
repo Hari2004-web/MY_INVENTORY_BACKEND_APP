@@ -1,47 +1,53 @@
-// controllers/stockController.js
 const pool = require("../db/connect");
 
-// ✅ Add Stock
+// Create Stock
 const createStock = async (req, res) => {
-  const { product_id, quantity, location, updated_by } = req.body;
+  const { product_id, quantity } = req.body;
+  const created_by = req.user.id;
+
   try {
-    const [result] = await pool.query(
-      "CALL SP_DEALS_STOCKCREATION(?, ?, ?, ?)",
-      [product_id, quantity, location, updated_by]
-    );
-    res.status(201).json({ success: true, message: "Stock added", data: result });
+    await pool.query("CALL SP_DEALS_STOCKCREATE(?, ?, ?)", [
+      product_id,
+      quantity,
+      created_by,
+    ]);
+    res.status(201).json({ success: true, message: "Stock created" });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }
 };
 
-// ✅ Update Stock
+//  Update Stock
 const updateStock = async (req, res) => {
   const { id } = req.params;
-  const { quantity, location, updated_by } = req.body;
+  const { quantity } = req.body;
+  const updated_by = req.user.id;
+
   try {
-    const [result] = await pool.query(
-      "CALL SP_DEALS_STOCKUPDATE(?, ?, ?, ?)",
-      [id, quantity, location, updated_by]
-    );
-    res.json({ success: true, message: "Stock updated", data: result });
+    await pool.query("CALL SP_DEALS_STOCKUPDATE(?, ?, ?)", [
+      id,
+      quantity,
+      updated_by,
+    ]);
+    res.json({ success: true, message: "Stock updated" });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }
 };
 
-// ✅ Delete Stock
+// Delete Stock
 const deleteStock = async (req, res) => {
   const { id } = req.params;
+
   try {
-    const [result] = await pool.query("CALL SP_DEALS_STOCKDELETE(?)", [id]);
-    res.json({ success: true, message: "Stock deleted", data: result });
+    await pool.query("CALL SP_DEALS_STOCKDELETE(?)", [id]);
+    res.json({ success: true, message: "Stock deleted" });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }
 };
 
-// ✅ View All Stocks
+//  View All Stocks
 const getStocks = async (req, res) => {
   try {
     const [rows] = await pool.query("CALL SP_DEALS_STOCKVIEW()");
@@ -51,4 +57,22 @@ const getStocks = async (req, res) => {
   }
 };
 
-module.exports = { createStock, updateStock, deleteStock, getStocks };
+// View Stock by ID
+const getStockById = async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const [rows] = await pool.query("CALL SP_DEALS_STOCKVIEWBYID(?)", [id]);
+    res.json({ success: true, data: rows[0][0] || null });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+};
+
+module.exports = {
+  createStock,
+  updateStock,
+  deleteStock,
+  getStocks,
+  getStockById,
+};

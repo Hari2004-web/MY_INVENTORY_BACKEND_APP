@@ -1,21 +1,22 @@
-// routes/stockRoutes.js
 const express = require("express");
-const router = express.Router();
+const { authenticateToken, authorizeRoles } = require("../middleware/authMiddleware");
 const {
   createStock,
-  getStocks,
   updateStock,
   deleteStock,
+  getStocks,
+  getStockById,
 } = require("../controllers/stockController");
 
-const { authenticateToken, authorizeRoles } = require("../middleware/authMiddleware");
+const router = express.Router();
 
-// Admin & Manager can view stocks
-router.get("/", authenticateToken, authorizeRoles("admin", "manager"), getStocks);
-
-// Only Manager can create/update/delete stocks
+// Manager can create, update, delete stock
 router.post("/", authenticateToken, authorizeRoles("manager"), createStock);
 router.put("/:id", authenticateToken, authorizeRoles("manager"), updateStock);
 router.delete("/:id", authenticateToken, authorizeRoles("manager"), deleteStock);
+
+// Any logged-in user can view stocks
+router.get("/", authenticateToken, getStocks);
+router.get("/:id", authenticateToken, getStockById);
 
 module.exports = router;
