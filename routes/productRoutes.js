@@ -10,15 +10,15 @@ const {
 
 const router = express.Router();
 
-// Only manager can create products
-router.post("/", authenticateToken, authorizeRoles("manager"), createProduct);
+router.use(authenticateToken);
 
-// Manager can also update or delete
-router.put("/:id", authenticateToken, authorizeRoles("manager"), updateProduct);
-router.delete("/:id", authenticateToken, authorizeRoles("manager"), deleteProduct);
+// ONLY managers can create, update, and delete
+router.post("/", authorizeRoles("manager"), createProduct);
+router.put("/:id", authorizeRoles("manager"), updateProduct);
+router.delete("/:id", authorizeRoles("manager"), deleteProduct);
 
-// Anyone logged in can view products
-router.get("/", authenticateToken, getProducts);
-router.get("/:id", authenticateToken, getProductById);
+// BOTH admins and managers can view
+router.get("/", authorizeRoles("admin", "manager"), getProducts);
+router.get("/:id", authorizeRoles("admin", "manager"), getProductById);
 
 module.exports = router;

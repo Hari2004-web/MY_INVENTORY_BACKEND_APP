@@ -1,53 +1,60 @@
-// controllers/authController.js
-const pool = require("../db/connect");
+const userModel = require("../models/userModel");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
+const responseHandler = require("../utils/responseHandler");
 
-const JWT_SECRET = process.env.JWT_SECRET || "supersecretkey";
-
-// Register
+// ... (register function is fine)
 const register = async (req, res) => {
-  const { username, email, password, role } = req.body;
-  if (!username || !email || !password) {
-    return res.status(400).json({ success: false, message: "All fields are required" });
-  }
+    try {
+      const { username, email, password } = req.body;
+      const users = await userModel.getAll();
+      if (users.some(user => user.role === 'admin')) {
+        return responseHandler.send({ res, result: { statusCode: 403, message: "An admin already exists." } });
+      }
+      const hashedPassword = await bcrypt.hash(password, 10);
+      await userModel.createUser({ username, email, password: hashedPassword, role: 'admin' });
+      responseHandler.send({ res, result: { statusCode: 201, message: "Admin registered successfully" } });
+    } catch (error) {
+      responseHandler.send({ res, result: { statusCode: 500, error: error.message } });
+    }
+  };
 
-  try {
-    const hashedPassword = await bcrypt.hash(password, 10);
-    await pool.query("CALL SP_DEALS_USERCREATION(?, ?, ?, ?)", [
-      username,
-      email,
-      hashedPassword,
-      role || "manager",
-    ]);
 
-    res.status(201).json({ success: true, message: "User registered" });
-  } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
-  }
-};
-
-// Login
 const login = async (req, res) => {
-  const { email, password } = req.body;
-  if (!email || !password) {
-    return res.status(400).json({ success: false, message: "Email and password required" });
-  }
-
   try {
-    const [rows] = await pool.query("CALL SP_DEALS_USERBYEMAIL(?)", [email]);
-    const user = rows[0][0]; // first row, first record
-    if (!user) return res.status(404).json({ success: false, message: "User not found" });
+    const { email, password } = req.body;
+    console.log("--- LOGIN ATTEMPT ---");
+    console.log("Attempting login for email:", email);
+
+    const user = await userModel.findUserByEmail(email);
+
+    if (!user) {
+      console.log("DEBUG: User not found in database.");
+      return responseHandler.send({ res, result: { statusCode: 404, message: "User not found" } });
+    }
+
+    console.log("DEBUG: User found:", user.username);
+    console.log("DEBUG: Plain text password from form:", password);
+    console.log("DEBUG: Hashed password from database:", user.password_hash);
 
     const validPassword = await bcrypt.compare(password, user.password_hash);
-    if (!validPassword) return res.status(401).json({ success: false, message: "Invalid credentials" });
 
-    // Generate JWT
-    const token = jwt.sign({ id: user.id, role: user.role }, JWT_SECRET, { expiresIn: "1h" });
+    console.log("DEBUG: bcrypt.compare result:", validPassword); // This will be true or false
 
-    res.json({ success: true, token, user: { id: user.id, username: user.username, role: user.role } });
+    if (!validPassword) {
+      console.log("DEBUG: Password comparison failed.");
+      return responseHandler.send({ res, result: { statusCode: 401, message: "Invalid credentials" } });
+    }
+
+    console.log("DEBUG: Password comparison successful. Generating token.");
+    const token = jwt.sign({ id: user.id, role: user.role }, process.env.JWT_SECRET, { expiresIn: "1h" });
+    const userData = { id: user.id, username: user.username, role: user.role };
+    
+    responseHandler.send({ res, result: { data: { token, user: userData } } });
+
   } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
+    console.error("!!! FATAL ERROR in login controller:", error);
+    responseHandler.send({ res, result: { statusCode: 500, error: error.message } });
   }
 };
 

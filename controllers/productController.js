@@ -1,76 +1,60 @@
-// controllers/productController.js
-const pool = require("../db/connect");
+const productModel = require("../models/productModel");
+const responseHandler = require("../utils/responseHandler");
 
-// ✅ Create Product
-// ✅ Use req.user.id from JWT middleware
 const createProduct = async (req, res) => {
-  const { name, description, sku, price } = req.body;
-  const created_by = req.user.id; // safe!
-
   try {
-    const [result] = await pool.query(
-      "CALL SP_DEALS_PRODUCTCREATION(?, ?, ?, ?, ?)",
-      [name, description, sku, price, created_by]
-    );
-    res.status(201).json({ success: true, message: "Product created", data: result });
+    const payload = { ...req.body, created_by: req.user.id };
+    await productModel.create(payload);
+    responseHandler.send({ res, result: { statusCode: 201, message: "Product created" } });
   } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
+    responseHandler.send({ res, result: { statusCode: 500, error: error.message } });
   }
 };
 
-// ✅ Update Product
-const updateProduct = async (req, res) => {
-  const { id } = req.params;
-  const { name, description, sku, price, updated_by } = req.body; // must include updated_by
-
-  try {
-    const [result] = await pool.query(
-      "CALL SP_DEALS_PRODUCTUPDATE(?, ?, ?, ?, ?, ?)",
-      [id, name, description, sku, price, updated_by]
-    );
-    res.json({ success: true, message: "Product updated", data: result });
-  } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
-  }
-};
-
-// ✅ Delete Product
-const deleteProduct = async (req, res) => {
-  const { id } = req.params;
-  try {
-    const [result] = await pool.query("CALL SP_DEALS_PRODUCTDELETE(?)", [id]);
-    res.json({ success: true, message: "Product deleted", data: result });
-  } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
-  }
-};
-
-//  Get All Products
 const getProducts = async (req, res) => {
   try {
-    const [rows] = await pool.query("CALL SP_DEALS_PRODUCTVIEW()");
-    res.json({ success: true, data: rows[0] });
+    const products = await productModel.getAll();
+    responseHandler.send({ res, result: { data: products } });
   } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
+    responseHandler.send({ res, result: { statusCode: 500, error: error.message } });
   }
 };
 
-// Get Product by ID
 const getProductById = async (req, res) => {
-  const { id } = req.params;
   try {
-    const [rows] = await pool.query("CALL SP_DEALS_PRODUCTVIEWBYID(?)", [id]);
-    res.json({ success: true, data: rows[0] });
+    const product = await productModel.getById(req.params.id);
+    if (!product) {
+        return responseHandler.send({ res, result: { statusCode: 404, message: "Product not found"} });
+    }
+    responseHandler.send({ res, result: { data: product } });
   } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
+    responseHandler.send({ res, result: { statusCode: 500, error: error.message } });
   }
 };
 
-module.exports = { 
-  createProduct, 
-  updateProduct, 
-  deleteProduct, 
-  getProducts, 
-  getProductById 
+const updateProduct = async (req, res) => {
+  try {
+    const payload = { ...req.body, id: req.params.id, updated_by: req.user.id };
+    await productModel.update(payload);
+    responseHandler.send({ res, result: { message: "Product updated" } });
+  } catch (error) {
+    responseHandler.send({ res, result: { statusCode: 500, error: error.message } });
+  }
 };
 
+const deleteProduct = async (req, res) => {
+  try {
+    await productModel.remove(req.params.id);
+    responseHandler.send({ res, result: { message: "Product deleted" } });
+  } catch (error) {
+    responseHandler.send({ res, result: { statusCode: 500, error: error.message } });
+  }
+};
+
+module.exports = {
+  createProduct,
+  getProducts,
+  getProductById, // Ensure this is exported
+  updateProduct,
+  deleteProduct,
+};

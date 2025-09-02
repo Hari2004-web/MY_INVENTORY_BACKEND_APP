@@ -1,75 +1,49 @@
-const pool = require("../db/connect");
+const userModel = require("../models/userModel");
+const responseHandler = require("../utils/responseHandler");
+const bcrypt = require("bcryptjs"); // Import bcrypt
 
-
-// Create User
+// This function is for admins to create new users (managers)
 const createUser = async (req, res) => {
-  const { username, email, password_hash, role } = req.body;
   try {
-    const [result] = await pool.query(
-      "CALL SP_DEALS_USERCREATION(?, ?, ?, ?)",
-      [username, email, password_hash, role]
-    );
-    res.status(201).json({ success: true, message: "User created", data: result });
+    const { username, email, password, role } = req.body;
+    if (!username || !email || !password || !role) {
+        return responseHandler.send({ res, result: { statusCode: 400, message: "All fields are required" } });
+    }
+    // Hash the password before creating the user
+    const hashedPassword = await bcrypt.hash(password, 10);
+    await userModel.createUser({ username, email, password: hashedPassword, role });
+    responseHandler.send({ res, result: { statusCode: 201, message: "User created successfully" } });
   } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
+    responseHandler.send({ res, result: { statusCode: 500, error: error.message } });
   }
 };
 
-// Update User
-const updateUser = async (req, res) => {
-  const { id } = req.params;
-  const { username, email, role } = req.body;
-  try {
-    const [result] = await pool.query(
-      "CALL SP_DEALS_USERUPDATE(?, ?, ?, ?)",
-      [id, username, email, role]
-    );
-    res.json({ success: true, message: "User updated", data: result });
-  } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
-  }
-};
-
-// Delete User
-const deleteUser = async (req, res) => {
-  const { id } = req.params;
-  try {
-    const [result] = await pool.query("CALL SP_DEALS_USERDELETE(?)", [id]);
-    res.json({ success: true, message: "User deleted", data: result });
-  } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
-  }
-};
-// In userController.js
-
-// View All Users
 const getAllUsers = async (req, res) => {
   try {
-    const [rows] = await pool.query("CALL SP_DEALS_USERVIEW()");
-    res.json({ success: true, data: rows[0] });
+    const users = await userModel.getAll();
+    responseHandler.send({ res, result: { data: users } });
   } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
+    responseHandler.send({ res, result: { statusCode: 500, error: error.message } });
   }
 };
 
-// View Single User by ID
-const getUserById = async (req, res) => {
-  const { id } = req.params;
+const updateUser = async (req, res) => {
   try {
-    const [rows] = await pool.query("SELECT * FROM users WHERE id = ?", [id]);
-    if (rows.length === 0) {
-      return res.status(404).json({ success: false, message: "User not found" });
-    }
-    res.json({ success: true, data: rows[0] });
+    const payload = { ...req.body, id: req.params.id };
+    await userModel.updateUser(payload);
+    responseHandler.send({ res, result: { message: "User updated" } });
   } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
+    responseHandler.send({ res, result: { statusCode: 500, error: error.message } });
   }
 };
 
-module.exports = {
-  createUser,
-  updateUser,
-  deleteUser,
-  getAllUsers,
-  getUserById,
+const deleteUser = async (req, res) => {
+  try {
+    await userModel.deleteUser(req.params.id);
+    responseHandler.send({ res, result: { message: "User deleted" } });
+  } catch (error) {
+    responseHandler.send({ res, result: { statusCode: 500, error: error.message } });
+  }
 };
+
+module.exports = { createUser, getAllUsers, updateUser, deleteUser }; // Export createUser

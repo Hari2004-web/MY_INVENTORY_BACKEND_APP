@@ -1,78 +1,61 @@
-const pool = require("../db/connect");
+const stockModel = require("../models/stockModel");
+const responseHandler = require("../utils/responseHandler");
 
-// Create Stock
 const createStock = async (req, res) => {
-  const { product_id, quantity } = req.body;
-  const created_by = req.user.id;
-
   try {
-    await pool.query("CALL SP_DEALS_STOCKCREATE(?, ?, ?)", [
-      product_id,
-      quantity,
-      created_by,
-    ]);
-    res.status(201).json({ success: true, message: "Stock created" });
+    const payload = { ...req.body, created_by: req.user.id };
+    await stockModel.create(payload);
+    responseHandler.send({ res, result: { statusCode: 201, message: "Stock created" } });
   } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
+    responseHandler.send({ res, result: { statusCode: 500, error: error.message } });
   }
 };
 
-//  Update Stock
-const updateStock = async (req, res) => {
-  const { id } = req.params;
-  const { quantity } = req.body;
-  const updated_by = req.user.id;
-
-  try {
-    await pool.query("CALL SP_DEALS_STOCKUPDATE(?, ?, ?)", [
-      id,
-      quantity,
-      updated_by,
-    ]);
-    res.json({ success: true, message: "Stock updated" });
-  } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
-  }
-};
-
-// Delete Stock
-const deleteStock = async (req, res) => {
-  const { id } = req.params;
-
-  try {
-    await pool.query("CALL SP_DEALS_STOCKDELETE(?)", [id]);
-    res.json({ success: true, message: "Stock deleted" });
-  } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
-  }
-};
-
-//  View All Stocks
 const getStocks = async (req, res) => {
   try {
-    const [rows] = await pool.query("CALL SP_DEALS_STOCKVIEW()");
-    res.json({ success: true, data: rows[0] });
+    const stocks = await stockModel.getAll();
+    responseHandler.send({ res, result: { data: stocks } });
   } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
+    responseHandler.send({ res, result: { statusCode: 500, error: error.message } });
   }
 };
 
-// View Stock by ID
+// ADD THIS MISSING FUNCTION
 const getStockById = async (req, res) => {
-  const { id } = req.params;
+    try {
+        const stock = await stockModel.getById(req.params.id);
+        if (!stock) {
+            return responseHandler.send({ res, result: { statusCode: 404, message: "Stock not found"} });
+        }
+        responseHandler.send({ res, result: { data: stock } });
+    } catch (error) {
+        responseHandler.send({ res, result: { statusCode: 500, error: error.message } });
+    }
+};
 
+const updateStock = async (req, res) => {
   try {
-    const [rows] = await pool.query("CALL SP_DEALS_STOCKVIEWBYID(?)", [id]);
-    res.json({ success: true, data: rows[0][0] || null });
+    const payload = { ...req.body, id: req.params.id, updated_by: req.user.id };
+    await stockModel.update(payload);
+    responseHandler.send({ res, result: { message: "Stock updated" } });
   } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
+    responseHandler.send({ res, result: { statusCode: 500, error: error.message } });
+  }
+};
+
+const deleteStock = async (req, res) => {
+  try {
+    await stockModel.remove(req.params.id);
+    responseHandler.send({ res, result: { message: "Stock deleted" } });
+  } catch (error) {
+    responseHandler.send({ res, result: { statusCode: 500, error: error.message } });
   }
 };
 
 module.exports = {
   createStock,
+  getStocks,
+  getStockById, // Ensure this is exported
   updateStock,
   deleteStock,
-  getStocks,
-  getStockById,
 };

@@ -10,13 +10,15 @@ const {
 
 const router = express.Router();
 
-// Manager can create, update, delete stock
-router.post("/", authenticateToken, authorizeRoles("manager"), createStock);
-router.put("/:id", authenticateToken, authorizeRoles("manager"), updateStock);
-router.delete("/:id", authenticateToken, authorizeRoles("manager"), deleteStock);
+router.use(authenticateToken);
 
-// Any logged-in user can view stocks
-router.get("/", authenticateToken, getStocks);
-router.get("/:id", authenticateToken, getStockById);
+// ONLY managers can create, update, and delete
+router.post("/", authorizeRoles("manager"), createStock);
+router.put("/:id", authorizeRoles("manager"), updateStock);
+router.delete("/:id", authorizeRoles("manager"), deleteStock);
+
+// BOTH admins and managers can view
+router.get("/", authorizeRoles("admin", "manager"), getStocks);
+router.get("/:id", authorizeRoles("admin", "manager"), getStockById);
 
 module.exports = router;
