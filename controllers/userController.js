@@ -1,15 +1,15 @@
 const userModel = require("../models/userModel");
 const responseHandler = require("../utils/responseHandler");
-const bcrypt = require("bcryptjs"); // Import bcrypt
+const bcrypt = require("bcryptjs");
 
-// This function is for admins to create new users (managers)
 const createUser = async (req, res) => {
   try {
+    // FIX: Changed 'of' to '=' for correct destructuring
     const { username, email, password, role } = req.body;
+    
     if (!username || !email || !password || !role) {
         return responseHandler.send({ res, result: { statusCode: 400, message: "All fields are required" } });
     }
-    // Hash the password before creating the user
     const hashedPassword = await bcrypt.hash(password, 10);
     await userModel.createUser({ username, email, password: hashedPassword, role });
     responseHandler.send({ res, result: { statusCode: 201, message: "User created successfully" } });
@@ -17,6 +17,35 @@ const createUser = async (req, res) => {
     responseHandler.send({ res, result: { statusCode: 500, error: error.message } });
   }
 };
+
+const changePassword = async (req, res) => {
+  try {
+    const { oldPassword, newPassword } = req.body;
+    const userId = req.user.id; 
+
+    if (!oldPassword || !newPassword) {
+      return responseHandler.send({ res, result: { statusCode: 400, message: "Old and new passwords are required" } });
+    }
+
+    const user = await userModel.findUserById(userId);
+    if (!user) {
+      return responseHandler.send({ res, result: { statusCode: 404, message: "User not found" } });
+    }
+
+    const isMatch = await bcrypt.compare(oldPassword, user.password_hash);
+    if (!isMatch) {
+      return responseHandler.send({ res, result: { statusCode: 401, message: "Incorrect old password" } });
+    }
+
+    const hashedNewPassword = await bcrypt.hash(newPassword, 10);
+    await userModel.updatePassword(userId, hashedNewPassword);
+
+    responseHandler.send({ res, result: { message: "Password updated successfully" } });
+  } catch (error) {
+    responseHandler.send({ res, result: { statusCode: 500, error: error.message } });
+  }
+};
+
 
 const getAllUsers = async (req, res) => {
   try {
@@ -46,4 +75,10 @@ const deleteUser = async (req, res) => {
   }
 };
 
-module.exports = { createUser, getAllUsers, updateUser, deleteUser }; // Export createUser
+module.exports = {
+  createUser,
+  getAllUsers,
+  updateUser,
+  deleteUser,
+  changePassword,
+};

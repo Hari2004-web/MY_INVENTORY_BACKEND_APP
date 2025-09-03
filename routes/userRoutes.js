@@ -1,17 +1,21 @@
 const express = require("express");
 const { authenticateToken, authorizeRoles } = require("../middleware/authMiddleware");
-const { createUser, getAllUsers, updateUser, deleteUser } = require("../controllers/userController");
+const { 
+    createUser, 
+    getAllUsers, 
+    updateUser, 
+    deleteUser, 
+    changePassword 
+} = require("../controllers/userController");
 
 const router = express.Router();
 
-router.use(authenticateToken, authorizeRoles("admin")); // Secure all routes for admins
+// Route for any logged-in user to change their own password
+router.post("/change-password", authenticateToken, changePassword);
 
-router.route("/")
-  .get(getAllUsers)
-  .post(createUser); // Add the POST route for creating users
-
-router.route("/:id")
-  .put(updateUser)
-  .delete(deleteUser);
+// Admin-only routes for managing other users
+router.use(authenticateToken, authorizeRoles("admin"));
+router.route("/").get(getAllUsers).post(createUser);
+router.route("/:id").put(updateUser).delete(deleteUser);
 
 module.exports = router;
