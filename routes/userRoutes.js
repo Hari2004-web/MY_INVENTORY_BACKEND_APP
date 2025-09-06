@@ -5,17 +5,22 @@ const {
     getAllUsers, 
     updateUser, 
     deleteUser, 
-    changePassword 
+    changePassword,
+    sendMessageToManager
 } = require("../controllers/userController");
 
 const router = express.Router();
 
-// Route for any logged-in user to change their own password
+// This route is for any authenticated user (manager or admin)
 router.post("/change-password", authenticateToken, changePassword);
 
-// Admin-only routes for managing other users
+// The routes below are ONLY for admins
 router.use(authenticateToken, authorizeRoles("admin"));
+
 router.route("/").get(getAllUsers).post(createUser);
 router.route("/:id").put(updateUser).delete(deleteUser);
+
+// This line defines the route for sending a message
+router.post("/send-message", sendMessageToManager); 
 
 module.exports = router;
