@@ -13,7 +13,7 @@ async function getAll() {
 
 async function getById(id) {
   const [rows] = await pool.query("CALL SP_DEALS_STOCKVIEWBYID(?)", [id]);
-  return rows[0][0];
+  return rows[0][0]; // This gets the first record
 }
 
 async function update({ id, quantity, updated_by }) {
@@ -29,7 +29,7 @@ async function remove(id) {
 module.exports = {
   create,
   getAll,
-  getById,
+  getById, // Ensure this is exported
   update,
   remove,
 };

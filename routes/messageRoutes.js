@@ -4,9 +4,10 @@ const { sendMessage, getMyMessages } = require("../controllers/messageController
 
 const router = express.Router();
 
+// All message routes require the user to be logged in
 router.use(authenticateToken);
 
-// An admin can send a message
+// Admins can send messages
 router.post("/", authorizeRoles("admin"), sendMessage);
 
 // Any logged-in user can get their own messages
