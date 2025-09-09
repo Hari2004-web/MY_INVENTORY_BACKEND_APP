@@ -16,8 +16,14 @@ async function getMessagesForUser(recipient_id) {
   );
   return rows;
 }
-
+async function markAsRead(messageId, userId) {
+  return pool.query(
+    "UPDATE messages SET is_read = 1 WHERE id = ? AND recipient_id = ?",
+    [messageId, userId]
+  );
+}
 module.exports = {
   create,
   getMessagesForUser,
+  markAsRead,
 };

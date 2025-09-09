@@ -1,5 +1,6 @@
 const express = require("express");
 const { authenticateToken, authorizeRoles } = require("../middleware/authMiddleware");
+const productUpload = require('../middleware/productUploadMiddleware');
 const {
   createProduct,
   updateProduct,
@@ -12,12 +13,11 @@ const router = express.Router();
 
 router.use(authenticateToken);
 
-// ONLY managers can create, update, and delete
-router.post("/", authorizeRoles("manager"), createProduct);
-router.put("/:id", authorizeRoles("manager"), updateProduct);
-router.delete("/:id", authorizeRoles("manager"), deleteProduct);
+// Use the upload middleware on the create and update routes
+router.post("/", authorizeRoles("manager"), productUpload, createProduct);
+router.put("/:id", authorizeRoles("manager"), productUpload, updateProduct);
 
-// BOTH admins and managers can view
+router.delete("/:id", authorizeRoles("manager"), deleteProduct);
 router.get("/", authorizeRoles("admin", "manager"), getProducts);
 router.get("/:id", authorizeRoles("admin", "manager"), getProductById);
 

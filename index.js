@@ -1,6 +1,7 @@
 const express = require("express");
 const cors = require("cors");
 require("dotenv").config();
+const path = require('path'); // Import the path module
 
 // Import all of your route files
 const authRoutes = require("./routes/authRoutes");
@@ -14,6 +15,10 @@ const app = express();
 // Middleware
 app.use(cors());
 app.use(express.json());
+
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+// Serve static files for avatars AND products
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // API Routes - This section tells your server to use the imported route files
 app.use("/api/auth", authRoutes);

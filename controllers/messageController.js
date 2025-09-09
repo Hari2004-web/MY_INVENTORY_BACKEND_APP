@@ -21,8 +21,20 @@ const getMyMessages = async (req, res) => {
     responseHandler.send({ res, result: { statusCode: 500, error: error.message } });
   }
 };
+const markMessageAsRead = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const messageId = req.params.id;
+    await messageModel.markAsRead(messageId, userId);
+    responseHandler.send({ res, result: { message: "Message marked as read" } });
+  } catch (error) {
+    responseHandler.send({ res, result: { statusCode: 500, error: error.message } });
+  }
+};
+
 
 module.exports = {
   sendMessage,
   getMyMessages,
+  markMessageAsRead,
 };
