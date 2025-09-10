@@ -33,6 +33,24 @@ async function remove(id, manager_id) {
   const sql = "DELETE FROM products WHERE id = ? AND manager_id = ?";
   return pool.query(sql, [id, manager_id]);
 }
+// ADD THIS NEW FUNCTION
+async function getPublicProducts() {
+  const sql = `
+    SELECT 
+      p.id, 
+      p.name, 
+      p.description, 
+      p.price, 
+      p.image_url, 
+      COALESCE(s.quantity, 0) as quantity 
+    FROM 
+      products p 
+    LEFT JOIN 
+      stocks s ON p.id = s.product_id
+  `;
+  const [rows] = await pool.query(sql);
+  return rows;
+}
 
 module.exports = {
   create,
@@ -41,4 +59,5 @@ module.exports = {
   getByIdAndManager,
   update,
   remove,
+  getPublicProducts,
 };
