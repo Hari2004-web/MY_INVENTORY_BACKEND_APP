@@ -85,6 +85,59 @@ const sendMessageToManager = async (req, res) => {
     responseHandler.send({ res, result: { statusCode: 500, error: "Failed to send the message." } });
   }
 };
+// ADD THIS NEW CONTROLLER FUNCTION
+const uploadAvatar = async (req, res) => {
+  try {
+    // The 'upload' middleware places the file info in req.file
+    if (!req.file) {
+      return responseHandler.send({ res, result: { statusCode: 400, message: "No file was uploaded." } });
+    }
+
+    // Construct the path to be stored in the database
+    const avatarUrl = `/uploads/avatars/${req.file.filename}`;
+
+    // Update the user's record in the database
+    await userModel.updateAvatar(req.user.id, avatarUrl);
+
+    // Fetch the updated user data to send back to the frontend
+    const updatedUser = await userModel.findUserById(req.user.id);
+
+    // Send a success response with the new user data
+    responseHandler.send({ 
+        res, 
+        result: { 
+            message: "Avatar updated successfully", 
+            data: { user: updatedUser } 
+        } 
+    });
+  } catch (error) {
+    responseHandler.send({ res, result: { statusCode: 500, error: error.message } });
+  }
+};
+// ADD THIS NEW CONTROLLER FUNCTION
+const updateProfile = async (req, res) => {
+  try {
+    const { username } = req.body;
+    const userId = req.user.id;
+
+    if (!username || username.trim() === '') {
+      return responseHandler.send({ res, result: { statusCode: 400, message: "Username cannot be empty." } });
+    }
+
+    await userModel.updateUsername(userId, username.trim());
+    const updatedUser = await userModel.findUserById(userId);
+
+    responseHandler.send({
+      res,
+      result: {
+        message: "Profile updated successfully",
+        data: { user: updatedUser },
+      },
+    });
+  } catch (error) {
+    responseHandler.send({ res, result: { statusCode: 500, error: error.message } });
+  }
+};
 
 module.exports = {
   createUser,
@@ -93,4 +146,6 @@ module.exports = {
   deleteUser,
   changePassword,
   sendMessageToManager,
+  uploadAvatar,
+  updateProfile,
 };

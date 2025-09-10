@@ -45,6 +45,17 @@ async function updatePassword(id, hashedPassword) {
 async function setPasswordResetToken(id, token, expires) {
     return pool.query("UPDATE users SET reset_token = ?, reset_token_expires = ? WHERE id = ?", [token, expires, id]);
 }
+// ADD THIS NEW FUNCTION AT THE END
+async function updateAvatar(id, avatarUrl) {
+  return pool.query("UPDATE users SET avatar_url = ? WHERE id = ?", [avatarUrl, id]);
+}
+// ... (keep all your existing functions)
+
+// ADD THIS NEW FUNCTION
+async function updateUsername(id, username) {
+  return pool.query("UPDATE users SET username = ? WHERE id = ?", [username, id]);
+}
+
 
 module.exports = {
   createUser,
@@ -56,4 +67,6 @@ module.exports = {
   findUsersByRole,
   updatePassword,
   setPasswordResetToken,
+  updateAvatar,
+  updateUsername,
 };
