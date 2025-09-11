@@ -1,3 +1,5 @@
+// routes/productRoutes.js
+
 const express = require("express");
 const { authenticateToken, authorizeRoles } = require("../middleware/authMiddleware");
 const productUpload = require('../middleware/productUploadMiddleware');
@@ -18,7 +20,9 @@ router.post("/", authorizeRoles("manager"), productUpload, createProduct);
 router.put("/:id", authorizeRoles("manager"), productUpload, updateProduct);
 
 router.delete("/:id", authorizeRoles("manager"), deleteProduct);
-router.get("/", authorizeRoles("admin", "manager"), getProducts);
-router.get("/:id", authorizeRoles("admin", "manager"), getProductById);
+
+// FIX: Add 'billing_manager' to allow them to view products
+router.get("/", authorizeRoles("admin", "manager", "billing_manager"), getProducts);
+router.get("/:id", authorizeRoles("admin", "manager", "billing_manager"), getProductById);
 
 module.exports = router;

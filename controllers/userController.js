@@ -4,26 +4,27 @@ const bcrypt = require("bcryptjs");
 const sendEmail = require("../utils/sendEmail");
 const crypto = require("crypto");
 
+// --- MODIFIED FUNCTION ---
 const createUser = async (req, res) => {
   try {
-    const { username, email, role } = req.body;
-    if (!username || !email || !role) {
-      return responseHandler.send({ res, result: { statusCode: 400, message: "Username, email, and role are required" } });
+    const { username, email, password, role } = req.body;
+
+    // 1. Validate that all required fields are present
+    if (!username || !email || !password || !role) {
+      return responseHandler.send({ res, result: { statusCode: 400, message: "Username, email, password, and role are required" } });
     }
-    const newUserResult = await userModel.createUser({ username, email, password: null, role });
-    const newUserId = newUserResult[0].insertId;
-    const setPasswordToken = crypto.randomBytes(32).toString("hex");
-    const hashedToken = crypto.createHash("sha256").update(setPasswordToken).digest("hex");
-    const tokenExpiry = Date.now() + 24 * 60 * 60 * 1000;
-    await userModel.setPasswordResetToken(newUserId, hashedToken, tokenExpiry);
-    const setPasswordUrl = `http://localhost:5173/set-password/${setPasswordToken}`;
-    await sendEmail({
-      email: email,
-      subject: 'You have been invited to the Inventory Management System',
-      message: `Hello ${username},\n\nPlease click the following link to set your password:\n\n${setPasswordUrl}`
-    });
-    responseHandler.send({ res, result: { statusCode: 201, message: "Manager invitation sent successfully" } });
+
+    // 2. Pass the user data (including the plain-text password) directly to the model.
+    // The model will now be responsible for hashing.
+    await userModel.createUser({ username, email, password, role });
+
+    // 3. Send a success response
+    responseHandler.send({ res, result: { statusCode: 201, message: "User created successfully" } });
+
   } catch (error) {
+    if (error.code === 'ER_DUP_ENTRY') {
+        return responseHandler.send({ res, result: { statusCode: 409, message: "A user with this email already exists." } });
+    }
     responseHandler.send({ res, result: { statusCode: 500, error: error.message } });
   }
 };
@@ -85,36 +86,27 @@ const sendMessageToManager = async (req, res) => {
     responseHandler.send({ res, result: { statusCode: 500, error: "Failed to send the message." } });
   }
 };
-// ADD THIS NEW CONTROLLER FUNCTION
+
 const uploadAvatar = async (req, res) => {
   try {
-    // The 'upload' middleware places the file info in req.file
     if (!req.file) {
       return responseHandler.send({ res, result: { statusCode: 400, message: "No file was uploaded." } });
     }
-
-    // Construct the path to be stored in the database
     const avatarUrl = `/uploads/avatars/${req.file.filename}`;
-
-    // Update the user's record in the database
     await userModel.updateAvatar(req.user.id, avatarUrl);
-
-    // Fetch the updated user data to send back to the frontend
     const updatedUser = await userModel.findUserById(req.user.id);
-
-    // Send a success response with the new user data
-    responseHandler.send({ 
-        res, 
-        result: { 
-            message: "Avatar updated successfully", 
-            data: { user: updatedUser } 
-        } 
+    responseHandler.send({
+        res,
+        result: {
+            message: "Avatar updated successfully",
+            data: { user: updatedUser }
+        }
     });
   } catch (error) {
     responseHandler.send({ res, result: { statusCode: 500, error: error.message } });
   }
 };
-// ADD THIS NEW CONTROLLER FUNCTION
+
 const updateProfile = async (req, res) => {
   try {
     const { username } = req.body;

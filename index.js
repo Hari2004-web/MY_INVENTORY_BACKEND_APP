@@ -12,12 +12,16 @@ const messageRoutes = require("./routes/messageRoutes");
 // Add this line near the top with your other route imports
 const publicRoutes = require('./routes/publicRoutes');
 
+const billRoutes = require('./routes/billRoutes');
+
 
 const app = express();
 
 // Middleware
 app.use(cors());
 app.use(express.json());
+
+app.use('/api/bills', billRoutes);
 
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 // Serve static files for avatars AND products

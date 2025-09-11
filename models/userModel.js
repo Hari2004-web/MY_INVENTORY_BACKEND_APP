@@ -1,9 +1,13 @@
 const pool = require("../db/connect");
 const bcrypt = require("bcryptjs");
 
+// --- MODIFIED FUNCTION ---
 async function createUser({ username, email, password, role }) {
-  const hashedPassword = password ? await bcrypt.hash(password, 10) : null;
-  // This stored procedure call should match your database
+  // Hash the plain-text password received from the controller.
+  // Since the controller checks if the password exists, it will never be null here.
+  const hashedPassword = await bcrypt.hash(password, 10);
+
+  // Call the stored procedure with the newly hashed password.
   return pool.query("CALL SP_DEALS_USERCREATION(?, ?, ?, ?)", [
     username, email, hashedPassword, role,
   ]);
@@ -15,7 +19,6 @@ async function findUserByEmail(email) {
 }
 
 async function getAll() {
-  // This is the function that is likely causing the error
   const [rows] = await pool.query("CALL SP_DEALS_USERVIEW()");
   return rows[0];
 }
@@ -45,17 +48,14 @@ async function updatePassword(id, hashedPassword) {
 async function setPasswordResetToken(id, token, expires) {
     return pool.query("UPDATE users SET reset_token = ?, reset_token_expires = ? WHERE id = ?", [token, expires, id]);
 }
-// ADD THIS NEW FUNCTION AT THE END
+
 async function updateAvatar(id, avatarUrl) {
   return pool.query("UPDATE users SET avatar_url = ? WHERE id = ?", [avatarUrl, id]);
 }
-// ... (keep all your existing functions)
 
-// ADD THIS NEW FUNCTION
 async function updateUsername(id, username) {
   return pool.query("UPDATE users SET username = ? WHERE id = ?", [username, id]);
 }
-
 
 module.exports = {
   createUser,
