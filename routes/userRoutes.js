@@ -1,8 +1,8 @@
 const express = require("express");
 const { authenticateToken, authorizeRoles } = require("../middleware/authMiddleware");
-const upload = require("../middleware/uploadMiddleware"); // Import avatar upload middleware
+const upload = require("../middleware/uploadMiddleware");
 
-// 1. Make sure to import all the necessary controller functions
+// CRITICAL FIX: Added 'getCustomerPurchaseHistory' to the import list
 const { 
     createUser, 
     getAllUsers, 
@@ -11,21 +11,23 @@ const {
     changePassword,
     sendMessageToManager,
     uploadAvatar,
-    updateProfile 
+    updateProfile,
+    getAllCustomers,
+    getCustomerPurchaseHistory // 👈 This was the missing part
 } = require("../controllers/userController");
 
 const router = express.Router();
 
-// --- Routes available to ANY authenticated user ---
-// 2. Place all routes that any logged-in user can access HERE,
-//    BEFORE the admin-only section.
+// Routes available to ANY authenticated user
 router.put("/profile", authenticateToken, updateProfile);
 router.post("/profile/avatar", authenticateToken, upload, uploadAvatar);
 router.post("/change-password", authenticateToken, changePassword);
 
+// --- Admin & Manager Shared Routes ---
+router.get("/customers", authenticateToken, authorizeRoles("admin", "manager"), getAllCustomers);
+router.get("/customers/:id/history", authenticateToken, authorizeRoles("admin", "manager"), getCustomerPurchaseHistory);
 
 // --- Routes available ONLY to 'admin' role ---
-// 3. This line acts as a security gate. Any route below this can only be accessed by admins.
 router.use(authenticateToken, authorizeRoles("admin"));
 
 router.route("/").get(getAllUsers).post(createUser);

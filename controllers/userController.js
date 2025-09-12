@@ -3,22 +3,24 @@ const responseHandler = require("../utils/responseHandler");
 const bcrypt = require("bcryptjs");
 const sendEmail = require("../utils/sendEmail");
 const crypto = require("crypto");
+const billModel = require("../models/billModel");
 
-// --- MODIFIED FUNCTION ---
+// This is the function that was missing or incorrect
 const createUser = async (req, res) => {
   try {
     const { username, email, password, role } = req.body;
 
-    // 1. Validate that all required fields are present
     if (!username || !email || !password || !role) {
       return responseHandler.send({ res, result: { statusCode: 400, message: "Username, email, password, and role are required" } });
     }
 
-    // 2. Pass the user data (including the plain-text password) directly to the model.
-    // The model will now be responsible for hashing.
+    // Admins use this to create managers/billers, not customers
+    if (role === 'customer') {
+        return responseHandler.send({ res, result: { statusCode: 400, message: "This endpoint cannot be used to create customer accounts." } });
+    }
+
     await userModel.createUser({ username, email, password, role });
 
-    // 3. Send a success response
     responseHandler.send({ res, result: { statusCode: 201, message: "User created successfully" } });
 
   } catch (error) {
@@ -31,12 +33,14 @@ const createUser = async (req, res) => {
 
 const getAllUsers = async (req, res) => {
   try {
+    // This gets ALL users (admins, managers, etc.) for the main admin view
     const users = await userModel.getAll();
     responseHandler.send({ res, result: { data: users } });
   } catch (error) {
     responseHandler.send({ res, result: { statusCode: 500, error: error.message } });
   }
 };
+
 
 const updateUser = async (req, res) => {
   try {
@@ -131,6 +135,25 @@ const updateProfile = async (req, res) => {
   }
 };
 
+const getAllCustomers = async (req, res) => {
+    try {
+        const customers = await userModel.findUsersByRole('customer');
+        responseHandler.send({ res, result: { data: customers } });
+    } catch (error) {
+        responseHandler.send({ res, result: { statusCode: 500, error: error.message } });
+    }
+};
+
+const getCustomerPurchaseHistory = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const bills = await billModel.getBillsByUserId(id);
+        responseHandler.send({ res, result: { data: bills } });
+    } catch (error) {
+        responseHandler.send({ res, result: { statusCode: 500, error: error.message } });
+    }
+};
+  
 module.exports = {
   createUser,
   getAllUsers,
@@ -140,4 +163,6 @@ module.exports = {
   sendMessageToManager,
   uploadAvatar,
   updateProfile,
+  getAllCustomers,
+  getCustomerPurchaseHistory,
 };

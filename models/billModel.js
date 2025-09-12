@@ -92,10 +92,21 @@ async function getBillingStats() {
 
   return { ...todayStats, ...totalStats };
 }
+// ADD THIS NEW FUNCTION to the file
+async function getBillsByUserId(userId) {
+  const [rows] = await pool.query(
+    "SELECT * FROM bills WHERE created_by = ? ORDER BY created_at DESC",
+    [userId]
+  );
+  return rows;
+}
+
 
 module.exports = {
   createBill,
   getBills,
   getBillById, // EXPORT THE NEW FUNCTION 
-  getBillingStats // EXPORT THE NEW FUNCTION
+  getBillingStats, // EXPORT THE NEW FUNCTION
+  getBillsByUserId
+
 };

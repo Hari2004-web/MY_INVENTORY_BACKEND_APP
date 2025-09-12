@@ -1,8 +1,9 @@
 const pool = require("../db/connect");
 
-async function create({ name, description, sku, price, created_by, manager_id, image_url }) {
-  const sql = "INSERT INTO products (name, description, sku, price, created_by, manager_id, image_url) VALUES (?, ?, ?, ?, ?, ?, ?)";
-  const [result] = await pool.query(sql, [name, description, sku, price, created_by, manager_id, image_url]);
+// MODIFIED: Added 'category'
+async function create({ name, description, sku, price, created_by, manager_id, image_url, category }) {
+  const sql = "INSERT INTO products (name, description, sku, price, created_by, manager_id, image_url, category) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+  const [result] = await pool.query(sql, [name, description, sku, price, created_by, manager_id, image_url, category]);
   return result;
 }
 
@@ -24,16 +25,18 @@ async function getByIdAndManager(id, manager_id) {
   return rows[0];
 }
 
-async function update({ id, name, description, sku, price, updated_by, manager_id, image_url }) {
-  const sql = "UPDATE products SET name = ?, description = ?, sku = ?, price = ?, updated_by = ?, image_url = ? WHERE id = ? AND manager_id = ?";
-  return pool.query(sql, [name, description, sku, price, updated_by, image_url, id, manager_id]);
+// MODIFIED: Added 'category'
+async function update({ id, name, description, sku, price, updated_by, manager_id, image_url, category }) {
+  const sql = "UPDATE products SET name = ?, description = ?, sku = ?, price = ?, updated_by = ?, image_url = ?, category = ? WHERE id = ? AND manager_id = ?";
+  return pool.query(sql, [name, description, sku, price, updated_by, image_url, category, id, manager_id]);
 }
 
 async function remove(id, manager_id) {
   const sql = "DELETE FROM products WHERE id = ? AND manager_id = ?";
   return pool.query(sql, [id, manager_id]);
 }
-// ADD THIS NEW FUNCTION
+
+// MODIFIED: Added 'p.category'
 async function getPublicProducts() {
   const sql = `
     SELECT 
@@ -42,6 +45,7 @@ async function getPublicProducts() {
       p.description, 
       p.price, 
       p.image_url, 
+      p.category,
       COALESCE(s.quantity, 0) as quantity 
     FROM 
       products p 
@@ -49,6 +53,52 @@ async function getPublicProducts() {
       stocks s ON p.id = s.product_id
   `;
   const [rows] = await pool.query(sql);
+  return rows;
+}
+
+// NEW: Function to get best-selling products
+async function getRecommendedProducts() {
+  const sql = `
+    SELECT 
+      p.id, 
+      p.name, 
+      p.description, 
+      p.price, 
+      p.image_url, 
+      p.category,
+      COALESCE(s.quantity, 0) as quantity,
+      (SELECT SUM(bi.quantity) FROM bill_items bi WHERE bi.product_id = p.id) as total_sold
+    FROM 
+      products p 
+    LEFT JOIN 
+      stocks s ON p.id = s.product_id
+    ORDER BY 
+      total_sold DESC
+    LIMIT 8
+  `;
+  const [rows] = await pool.query(sql);
+  return rows;
+}
+
+// NEW: Function to get products by their category
+async function getProductsByCategory(category) {
+  const sql = `
+    SELECT 
+      p.id, 
+      p.name, 
+      p.description, 
+      p.price, 
+      p.image_url, 
+      p.category,
+      COALESCE(s.quantity, 0) as quantity 
+    FROM 
+      products p 
+    LEFT JOIN 
+      stocks s ON p.id = s.product_id
+    WHERE 
+      p.category = ?
+  `;
+  const [rows] = await pool.query(sql, [category]);
   return rows;
 }
 
@@ -60,4 +110,6 @@ module.exports = {
   update,
   remove,
   getPublicProducts,
-};
+  getRecommendedProducts,
+  getProductsByCategory,
+};  

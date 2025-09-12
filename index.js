@@ -27,6 +27,10 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 // Serve static files for avatars AND products
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
+
+app.use('/api/customer-auth', require('./routes/customerAuthRoutes'));
+
+
 // API Routes - This section tells your server to use the imported route files
 app.use("/api/auth", authRoutes);
 app.use("/api/products", productRoutes);
