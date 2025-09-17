@@ -1,5 +1,5 @@
 const express = require("express");
-const { getProductsForShop, getRecommendedProductsForShop, getCategoryProductsForShop } = require("../controllers/publicController");
+const { getProductsForShop, getRecommendedProductsForShop, getCategoryProductsForShop , getProductByIdForShop} = require("../controllers/publicController");
 
 const router = express.Router();
 
@@ -11,5 +11,8 @@ router.get("/products/recommended", getRecommendedProductsForShop);
 
 // NEW: Route for fetching products from a specific category
 router.get("/products/category/:category", getCategoryProductsForShop);
+
+// NEW: Route for fetching a single product by its ID
+router.get("/product/:id", getProductByIdForShop);
 
 module.exports = router;

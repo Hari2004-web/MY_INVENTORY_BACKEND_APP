@@ -13,7 +13,7 @@ const messageRoutes = require("./routes/messageRoutes");
 const publicRoutes = require('./routes/publicRoutes');
 
 const billRoutes = require('./routes/billRoutes');
-
+const wishlistRoutes = require('./routes/wishlistRoutes');
 
 const app = express();
 
@@ -29,7 +29,8 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 
 app.use('/api/customer-auth', require('./routes/customerAuthRoutes'));
-
+// Add this line with your other API routes
+app.use('/api/checkout', require('./routes/checkoutRoutes'));
 
 // API Routes - This section tells your server to use the imported route files
 app.use("/api/auth", authRoutes);
@@ -37,6 +38,8 @@ app.use("/api/products", productRoutes);
 app.use("/api/stocks", stockRoutes);
 app.use("/api/users", userRoutes); // This line makes all user routes available
 app.use("/api/messages", messageRoutes); // This line makes all message routes available
+app.use("/api/wishlist", wishlistRoutes); // This line makes all wishlist routes available
+
 const PORT = process.env.PORT || 5000;
 
 // Add this line with your other app.use() statements for routes

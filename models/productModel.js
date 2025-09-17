@@ -102,6 +102,27 @@ async function getProductsByCategory(category) {
   return rows;
 }
 
+// NEW: Function to get a single public product by its ID
+async function getPublicProductById(id) {
+  const sql = `
+    SELECT 
+      p.id, 
+      p.name, 
+      p.description, 
+      p.price, 
+      p.image_url, 
+      p.category,
+      COALESCE(s.quantity, 0) as quantity 
+    FROM 
+      products p 
+    LEFT JOIN 
+      stocks s ON p.id = s.product_id
+    WHERE
+      p.id = ?
+  `;
+  const [rows] = await pool.query(sql, [id]);
+  return rows[0]; // Returns the first (and only) result
+}
 module.exports = {
   create,
   getAllByManager,
@@ -112,4 +133,5 @@ module.exports = {
   getPublicProducts,
   getRecommendedProducts,
   getProductsByCategory,
+  getPublicProductById,
 };  
