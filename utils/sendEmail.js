@@ -1,29 +1,41 @@
+// utils/sendEmail.js
+
 const nodemailer = require("nodemailer");
 
 const sendEmail = async (options) => {
-  // This new configuration does NOT connect to the internet.
-  // It "sends" the email by printing its contents directly to your backend terminal.
-  // This is the most reliable method for local development and testing.
   const transporter = nodemailer.createTransport({
-    jsonTransport: true,
+    host: process.env.SMTP_HOST,
+    port: process.env.SMTP_PORT,
+    // secure: false is required for port 587, which uses STARTTLS
+    secure: false, 
+    auth: {
+      user: process.env.SMTP_USER,
+      pass: process.env.SMTP_PASS,
+    },
+    // --- THIS IS THE CRITICAL DEBUGGING CODE ---
+    // It will log the entire SMTP conversation to the console
+    logger: true,
+    debug: true 
   });
 
-  // Define the email options
   const mailOptions = {
-    from: '"Inventory App Admin" <admin@inventory.com>',
+    from: `"NEXUS Support" <${process.env.SMTP_FROM_EMAIL}>`,
     to: options.email,
     subject: options.subject,
     text: options.message,
   };
 
-  // "Send" the email
-  const info = await transporter.sendMail(mailOptions);
-
-  console.log("\n--- EMAIL SENT TO CONSOLE (JSON Transport) ---");
-  console.log("The following email object was successfully created:");
-  // The 'info.message' is a JSON string, so we parse it to log it as a readable object
-  console.log(JSON.parse(info.message));
-  console.log("---------------------------------------------\n");
+  try {
+    console.log("Attempting to send mail...");
+    let info = await transporter.sendMail(mailOptions);
+    console.log("Email sent successfully! Server Response:", info.response);
+    return info; // Return the success info
+  } catch (error) {
+    // This will now catch and display a much more detailed error
+    console.error("CRITICAL ERROR sending email:", error);
+    // Re-throw the error so the controller's catch block is triggered
+    throw new Error("Email could not be sent. Check server logs for details."); 
+  }
 };
 
 module.exports = sendEmail;

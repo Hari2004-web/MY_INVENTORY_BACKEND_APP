@@ -1,46 +1,69 @@
+// controllers/userController.js
+
 const userModel = require("../models/userModel");
 const responseHandler = require("../utils/responseHandler");
 const bcrypt = require("bcryptjs");
 const sendEmail = require("../utils/sendEmail");
-const crypto = require("crypto");
 const billModel = require("../models/billModel");
+const crypto = require("crypto");
 
-// This is the function that was missing or incorrect
 const createUser = async (req, res) => {
   try {
-    const { username, email, password, role } = req.body;
-
-    if (!username || !email || !password || !role) {
-      return responseHandler.send({ res, result: { statusCode: 400, message: "Username, email, password, and role are required" } });
+    const { username, email, role } = req.body;
+    if (!username || !email || !role) {
+      return responseHandler.send({ res, result: { statusCode: 400, message: "Username, email, and role are required" } });
     }
-
-    // Admins use this to create managers/billers, not customers
     if (role === 'customer') {
         return responseHandler.send({ res, result: { statusCode: 400, message: "This endpoint cannot be used to create customer accounts." } });
     }
 
-    await userModel.createUser({ username, email, password, role });
+    // Generate a token for setting the password
+    const setPasswordToken = crypto.randomBytes(32).toString("hex");
+    const hashedToken = crypto.createHash("sha256").update(setPasswordToken).digest("hex");
+    const tokenExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000); // Token is valid for 24 hours
 
-    responseHandler.send({ res, result: { statusCode: 201, message: "User created successfully" } });
+    // Create user without a password, but with the token
+    const newUser = await userModel.createUser({
+      username,
+      email,
+      role,
+      reset_token: hashedToken,
+      reset_token_expires: tokenExpiry,
+    });
 
+    // Send the set password email
+    const setPasswordUrl = `http://localhost:5173/set-password/${setPasswordToken}`;
+    
+    // --- THIS IS THE FIX ---
+    // The 'await' keyword ensures that the server waits for the email to be sent
+    // before proceeding to the next line.
+    await sendEmail({
+      email: newUser.email,
+      subject: "Welcome! Set Your Password",
+      message: `You have been invited to join the platform. Please set your password by clicking this link: ${setPasswordUrl}\n\nThis link will expire in 24 hours.`
+    });
+
+    // This success response is now only sent AFTER the email has been successfully dispatched.
+    responseHandler.send({ res, result: { statusCode: 201, message: "User created and invitation email sent." } });
+  
   } catch (error) {
     if (error.code === 'ER_DUP_ENTRY') {
-        return responseHandler.send({ res, result: { statusCode: 409, message: "A user with this email already exists." } });
+      return responseHandler.send({ res, result: { statusCode: 409, message: "A user with this email already exists." } });
     }
-    responseHandler.send({ res, result: { statusCode: 500, error: error.message } });
+    // This will now catch any errors from the 'sendEmail' function as well.
+    console.error("Error in createUser controller:", error);
+    responseHandler.send({ res, result: { statusCode: 500, error: "An unexpected error occurred on the server." } });
   }
 };
 
 const getAllUsers = async (req, res) => {
   try {
-    // This gets ALL users (admins, managers, etc.) for the main admin view
     const users = await userModel.getAll();
     responseHandler.send({ res, result: { data: users } });
   } catch (error) {
     responseHandler.send({ res, result: { statusCode: 500, error: error.message } });
   }
 };
-
 
 const updateUser = async (req, res) => {
   try {
@@ -115,14 +138,11 @@ const updateProfile = async (req, res) => {
   try {
     const { username } = req.body;
     const userId = req.user.id;
-
     if (!username || username.trim() === '') {
       return responseHandler.send({ res, result: { statusCode: 400, message: "Username cannot be empty." } });
     }
-
     await userModel.updateUsername(userId, username.trim());
     const updatedUser = await userModel.findUserById(userId);
-
     responseHandler.send({
       res,
       result: {
@@ -151,7 +171,7 @@ const getCustomerPurchaseHistory = async (req, res) => {
         responseHandler.send({ res, result: { data: bills } });
     } catch (error) {
         responseHandler.send({ res, result: { statusCode: 500, error: error.message } });
-    }
+  }
 };
   
 module.exports = {

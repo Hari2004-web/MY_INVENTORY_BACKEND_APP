@@ -1,5 +1,5 @@
 const userModel = require("../models/userModel");
-const bcrypt = require("bcryptjs");
+const bcrypt = require("bcryptjs"); // 1. Make sure bcrypt is required
 const jwt = require("jsonwebtoken");
 const responseHandler = require("../utils/responseHandler");
 
@@ -11,7 +11,11 @@ const register = async (req, res) => {
       return responseHandler.send({ res, result: { statusCode: 400, message: "Username, email, and password are required." } });
     }
     
-    await userModel.createUser({ username, email, password, role: 'customer' });
+    // 2. Hash the password before sending it to the model
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // 3. Send the hashed password to the model
+    await userModel.createUser({ username, email, password: hashedPassword, role: 'customer' });
 
     responseHandler.send({ res, result: { statusCode: 201, message: "Customer account created successfully." } });
   } catch (error) {
