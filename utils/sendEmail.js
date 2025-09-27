@@ -5,17 +5,14 @@ const nodemailer = require("nodemailer");
 const sendEmail = async (options) => {
   const transporter = nodemailer.createTransport({
     host: process.env.SMTP_HOST,
-    port: process.env.SMTP_PORT,
-    // secure: false is required for port 587, which uses STARTTLS
-    secure: false, 
+    port: process.env.SMTP_PORT, // This will correctly use port 587 from .env
+    secure: false, // This MUST be false for port 587
     auth: {
       user: process.env.SMTP_USER,
-      pass: process.env.SMTP_PASS,
+      pass: process.env.SMTP_PASS, // This must be your 16-digit Google App Password
     },
-    // --- THIS IS THE CRITICAL DEBUGGING CODE ---
-    // It will log the entire SMTP conversation to the console
-    logger: true,
-    debug: true 
+    // Optional: Add a timeout for better error handling
+    connectionTimeout: 10000, // 10 seconds
   });
 
   const mailOptions = {
@@ -26,15 +23,10 @@ const sendEmail = async (options) => {
   };
 
   try {
-    console.log("Attempting to send mail...");
-    let info = await transporter.sendMail(mailOptions);
-    console.log("Email sent successfully! Server Response:", info.response);
-    return info; // Return the success info
+    await transporter.sendMail(mailOptions);
   } catch (error) {
-    // This will now catch and display a much more detailed error
-    console.error("CRITICAL ERROR sending email:", error);
-    // Re-throw the error so the controller's catch block is triggered
-    throw new Error("Email could not be sent. Check server logs for details."); 
+    console.error("FAILED TO SEND EMAIL:", error);
+    throw new Error("Email could not be sent. Please check the server logs.");
   }
 };
 

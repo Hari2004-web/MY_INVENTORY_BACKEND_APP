@@ -1,18 +1,16 @@
+// models/userModel.js
+
 const pool = require("../db/connect");
 
-
-// Modified to handle optional password and include token fields
-async function createUser({ username, email, password, role, reset_token, reset_token_expires }) {
-  const sql = "INSERT INTO users (username, email, password_hash, role, reset_token, reset_token_expires) VALUES (?, ?, ?, ?, ?, ?)";
+// FIX: Simplified to only include the necessary fields for direct user creation.
+async function createUser({ username, email, password, role }) {
+  const sql = "INSERT INTO users (username, email, password_hash, role) VALUES (?, ?, ?, ?)";
   const [result] = await pool.query(sql, [
     username,
     email,
-    password || null, // Store null if no password is provided
+    password, // The controller will provide a hashed password
     role,
-    reset_token || null,
-    reset_token_expires || null,
   ]);
-  // Return the email to be used in the controller
   return { id: result.insertId, email };
 }
 
@@ -43,7 +41,7 @@ async function findUsersByRole(role) {
 
 async function findUserByResetToken(token) {
   const sql = "SELECT * FROM users WHERE reset_token = ? AND reset_token_expires > ?";
-  const [rows] = await pool.query(sql, [token, new Date()]); // Use new Date() for comparison
+  const [rows] = await pool.query(sql, [token, new Date()]);
   return rows[0];
 }
 

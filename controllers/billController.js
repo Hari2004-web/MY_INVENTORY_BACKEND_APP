@@ -2,13 +2,25 @@ const billModel = require("../models/billModel");
 const { get } = require("../routes/billRoutes");
 const responseHandler = require("../utils/responseHandler");
 
-// controllers/billController.js
-
 const createBill = async (req, res) => {
   try {
     const payload = { ...req.body, created_by: req.user.id };
+    
+    // Step 1: Create the initial 'pending' bill to get a unique ID.
     const newBill = await billModel.createBill(payload);
-    responseHandler.send({ res, result: { statusCode: 201, message: "Bill created successfully", data: newBill } });
+    
+    // Step 2: Immediately finalize the bill. This sets the invoice ID, updates the status to 'paid', and deducts stock.
+    const finalizationResult = await billModel.finalizeBillAndDeductStock(newBill.id, payload.products);
+
+    responseHandler.send({ 
+      res, 
+      result: { 
+        statusCode: 201, 
+        message: "Bill created and finalized successfully", 
+        data: { id: newBill.id, ...finalizationResult } 
+      } 
+    });
+
   } catch (error) {
     // Check for our custom insufficient stock error
     if (error.message.startsWith('Insufficient stock')) {

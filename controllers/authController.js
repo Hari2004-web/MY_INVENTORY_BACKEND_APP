@@ -1,3 +1,5 @@
+// controllers/authController.js
+
 const userModel = require("../models/userModel");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
@@ -5,22 +7,33 @@ const crypto = require("crypto");
 const sendEmail = require("../utils/sendEmail");
 const responseHandler = require("../utils/responseHandler");
 
-// ... (register, login, forgotPassword, verifyOtp, resetPassword functions remain the same) ...
 const register = async (req, res) => {
   try {
     const { username, email, password } = req.body;
-    const users = await userModel.getAll();
-    if (users.some(user => user.role === 'admin')) {
-      return responseHandler.send({ res, result: { statusCode: 403, message: "An admin already exists." } });
-    }
+
+    // FIX: This check is too restrictive. We will rely on the database's
+    // UNIQUE constraint on the email column to prevent duplicates.
+    // const users = await userModel.getAll();
+    // if (users.some(user => user.role === 'admin')) {
+    //   return responseHandler.send({ res, result: { statusCode: 403, message: "An admin already exists." } });
+    // }
+
     const hashedPassword = await bcrypt.hash(password, 10);
+    
+    // This now calls the simplified createUser function
     await userModel.createUser({ username, email, password: hashedPassword, role: 'admin' });
+    
     responseHandler.send({ res, result: { statusCode: 201, message: "Admin registered successfully" } });
   } catch (error) {
+    // This will catch if the email is already in use
+    if (error.code === 'ER_DUP_ENTRY') {
+      return responseHandler.send({ res, result: { statusCode: 409, message: "An account with this email already exists." } });
+    }
     responseHandler.send({ res, result: { statusCode: 500, error: error.message } });
   }
 };
 
+// ... (the rest of your authController.js file remains the same)
 const login = async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -74,11 +87,9 @@ const forgotPassword = async (req, res) => {
       return responseHandler.send({ res, result: { message: "If an account with that email exists, an OTP has been sent." } });
     }
 
-    // Generate a 6-digit OTP
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    const hashedOtp = await bcrypt.hash(otp, 10); // Hash the OTP
+    const hashedOtp = await bcrypt.hash(otp, 10);
     
-    // Set OTP expiry to 10 minutes from now
     const tokenExpiry = new Date(Date.now() + 10 * 60 * 1000); 
 
     await userModel.setPasswordResetToken(user.id, hashedOtp, tokenExpiry);
@@ -96,7 +107,6 @@ const forgotPassword = async (req, res) => {
   }
 };
 
-// --- NEW FUNCTION TO VERIFY OTP ---
 const verifyOtp = async (req, res) => {
   try {
     const { email, otp } = req.body;
@@ -106,7 +116,6 @@ const verifyOtp = async (req, res) => {
       return responseHandler.send({ res, result: { statusCode: 400, message: "Invalid OTP or OTP has expired." } });
     }
     
-    // If OTP is valid, send a success response
     responseHandler.send({ res, result: { message: "OTP verified successfully." } });
   } catch (error) {
     responseHandler.send({ res, result: { statusCode: 500, error: error.message } });
@@ -115,7 +124,6 @@ const verifyOtp = async (req, res) => {
 
 const resetPassword = async (req, res) => {
   try {
-    // The OTP is no longer needed here, just the email and new password
     const { email, password } = req.body;
     const user = await userModel.findUserByEmail(email);
 
@@ -130,6 +138,7 @@ const resetPassword = async (req, res) => {
     responseHandler.send({ res, result: { statusCode: 500, error: error.message } });
   }
 };
+
 const setPassword = async (req, res) => {
   try {
     const { token } = req.params;
@@ -147,7 +156,6 @@ const setPassword = async (req, res) => {
   }
 };
 
-
 module.exports = {
   register,
   login,
@@ -155,4 +163,4 @@ module.exports = {
   verifyOtp,
   resetPassword,
   setPassword,
-};  
+};

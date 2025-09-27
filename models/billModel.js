@@ -108,10 +108,19 @@ async function getBillById(id) {
 }
 
 async function getBillingStats() {
-  const sql = "SELECT COUNT(*) as totalBills, COALESCE(SUM(total_amount), 0) as totalRevenue FROM bills WHERE status = 'paid'";
+  const sql = `
+    SELECT 
+      COUNT(*) as totalBills, 
+      COALESCE(SUM(total_amount), 0) as totalRevenue,
+      SUM(CASE WHEN DATE(created_at) = CURDATE() THEN 1 ELSE 0 END) as billsToday,
+      COALESCE(SUM(CASE WHEN DATE(created_at) = CURDATE() THEN total_amount ELSE 0 END), 0) as revenueToday
+    FROM bills 
+    WHERE status = 'paid'
+  `;
   const [[stats]] = await pool.query(sql);
   return stats;
 }
+
 
 async function getBillsByUserId(userId) {
   const sql = "SELECT * FROM bills WHERE created_by = ? AND bill_no IS NOT NULL ORDER BY created_at DESC";

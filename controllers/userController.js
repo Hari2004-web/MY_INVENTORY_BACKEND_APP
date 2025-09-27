@@ -3,59 +3,44 @@
 const userModel = require("../models/userModel");
 const responseHandler = require("../utils/responseHandler");
 const bcrypt = require("bcryptjs");
-const sendEmail = require("../utils/sendEmail");
 const billModel = require("../models/billModel");
-const crypto = require("crypto");
+// Note: 'sendEmail' and 'crypto' are no longer needed in this function.
 
 const createUser = async (req, res) => {
   try {
-    const { username, email, role } = req.body;
-    if (!username || !email || !role) {
-      return responseHandler.send({ res, result: { statusCode: 400, message: "Username, email, and role are required" } });
+    // 1. Get the password from the request body
+    const { username, email, password, role } = req.body;
+    if (!username || !email || !password || !role) {
+      return responseHandler.send({ res, result: { statusCode: 400, message: "Username, email, password, and role are required" } });
     }
     if (role === 'customer') {
-        return responseHandler.send({ res, result: { statusCode: 400, message: "This endpoint cannot be used to create customer accounts." } });
+      return responseHandler.send({ res, result: { statusCode: 400, message: "This endpoint cannot be used to create customer accounts." } });
     }
 
-    // Generate a token for setting the password
-    const setPasswordToken = crypto.randomBytes(32).toString("hex");
-    const hashedToken = crypto.createHash("sha256").update(setPasswordToken).digest("hex");
-    const tokenExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000); // Token is valid for 24 hours
+    // 2. Hash the password provided by the admin
+    const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Create user without a password, but with the token
-    const newUser = await userModel.createUser({
+    // 3. Create the user with the hashed password
+    await userModel.createUser({
       username,
       email,
+      password: hashedPassword, // Pass the hashed password to the model
       role,
-      reset_token: hashedToken,
-      reset_token_expires: tokenExpiry,
     });
-
-    // Send the set password email
-    const setPasswordUrl = `http://localhost:5173/set-password/${setPasswordToken}`;
     
-    // --- THIS IS THE FIX ---
-    // The 'await' keyword ensures that the server waits for the email to be sent
-    // before proceeding to the next line.
-    await sendEmail({
-      email: newUser.email,
-      subject: "Welcome! Set Your Password",
-      message: `You have been invited to join the platform. Please set your password by clicking this link: ${setPasswordUrl}\n\nThis link will expire in 24 hours.`
-    });
+    // 4. Send a simple success response
+    responseHandler.send({ res, result: { statusCode: 201, message: "User created successfully." } });
 
-    // This success response is now only sent AFTER the email has been successfully dispatched.
-    responseHandler.send({ res, result: { statusCode: 201, message: "User created and invitation email sent." } });
-  
   } catch (error) {
     if (error.code === 'ER_DUP_ENTRY') {
       return responseHandler.send({ res, result: { statusCode: 409, message: "A user with this email already exists." } });
     }
-    // This will now catch any errors from the 'sendEmail' function as well.
     console.error("Error in createUser controller:", error);
     responseHandler.send({ res, result: { statusCode: 500, error: "An unexpected error occurred on the server." } });
   }
 };
 
+// ... (the rest of your userController.js file remains the same)
 const getAllUsers = async (req, res) => {
   try {
     const users = await userModel.getAll();
@@ -106,7 +91,10 @@ const changePassword = async (req, res) => {
 
 const sendMessageToManager = async (req, res) => {
   try {
+    // This function can remain as is, assuming you still need it.
     const { email, subject, message } = req.body;
+    // You might want to re-import sendEmail at the top if it's used here.
+    const sendEmail = require("../utils/sendEmail"); 
     await sendEmail({ email, subject, message });
     responseHandler.send({ res, result: { message: "Message sent successfully." } });
   } catch (error) {
